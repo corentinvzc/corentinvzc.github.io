@@ -4,6 +4,109 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Demo Shop</title>
+<script>
+(function () {
+  var KEY = 'consent_state_v1';
+  var dl = window.dataLayer = window.dataLayer || [];
+  function gtag() { dl.push(arguments); }
+
+  var MAP = {
+    analytics: ['analytics_storage'],
+    marketing: ['ad_storage', 'ad_user_data', 'ad_personalization'],
+    preferences: ['functionality_storage', 'personalization_storage']
+  };
+  var DENIED = { analytics: false, marketing: false, preferences: false };
+
+  function toGtag(s) {
+    var o = { security_storage: 'granted' };
+    Object.keys(MAP).forEach(function (c) {
+      MAP[c].forEach(function (k) { o[k] = s[c] ? 'granted' : 'denied'; });
+    });
+    return o;
+  }
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+  function store(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  function gd(v) { return v ? 'granted' : 'denied'; }
+  function send(s, trigger, source, displayed) {
+    dl.push({
+      event: 'consent_status',
+      consent_trigger: trigger,
+      consent_source: source,
+      consent_banner_displayed: displayed,
+      consent_analytics: gd(s.analytics),
+      consent_marketing: gd(s.marketing),
+      consent_preferences: gd(s.preferences)
+    });
+  }
+
+  // ---- 1) Défaut (denied) puis statut mémorisé, au chargement ----
+  var saved = load();
+  var d = toGtag(DENIED); d.wait_for_update = 500;
+  gtag('consent', 'default', d);
+  if (saved) gtag('consent', 'update', toGtag(saved));
+  send(saved || DENIED, 'page_load', saved ? 'stored' : 'default', !saved);
+
+  // ---- 2) Interaction ----
+  function apply(s, trigger) {
+    store(s);
+    gtag('consent', 'update', toGtag(s));
+    send(s, trigger, 'user', false);
+    hide();
+  }
+
+  // ---- 3) UI ----
+  var box, btn;
+  function hide() { if (box) box.style.display = 'none'; if (btn) btn.style.display = 'block'; }
+  function show() {
+    var s = load() || DENIED;
+    box.querySelectorAll('input[data-c]').forEach(function (i) { i.checked = !!s[i.dataset.c]; });
+    box.style.display = 'block'; btn.style.display = 'none';
+  }
+  function build() {
+    var st = document.createElement('style');
+    st.textContent =
+      '#cb-box{position:fixed;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;background:#fff;color:#111;border:1px solid #ccc;border-radius:10px;padding:18px;box-shadow:0 6px 24px rgba(0,0,0,.2);font:14px/1.5 system-ui,Arial,sans-serif;z-index:99999;display:none}' +
+      '#cb-box h4{margin:0 0 6px;font-size:16px}#cb-box p{margin:0 0 12px;color:#555}' +
+      '#cb-box button{font:inherit;border-radius:6px;padding:9px 14px;border:1px solid #111;cursor:pointer;margin:0 6px 6px 0;background:#fff;color:#111}' +
+      '#cb-box button.cb-p{background:#111;color:#fff}' +
+      '#cb-opts{display:none;margin:8px 0}#cb-opts label{display:block;margin:4px 0}' +
+      '#cb-reopen{position:fixed;left:16px;bottom:16px;z-index:99998;display:none;background:#111;color:#fff;border:0;border-radius:20px;padding:7px 14px;font:13px system-ui,Arial,sans-serif;cursor:pointer}';
+    document.head.appendChild(st);
+
+    box = document.createElement('div'); box.id = 'cb-box';
+    box.innerHTML =
+      '<h4>Cookies (bannière de test)</h4>' +
+      '<p>Simulation de consentement pour tester le tracking. Aucun vrai cookie publicitaire n\'est posé.</p>' +
+      '<div id="cb-opts">' +
+      '<label><input type="checkbox" checked disabled> Nécessaires</label>' +
+      '<label><input type="checkbox" data-c="analytics"> Mesure d\'audience (analytics_storage)</label>' +
+      '<label><input type="checkbox" data-c="marketing"> Publicité (ad_storage, ad_user_data, ad_personalization)</label>' +
+      '<label><input type="checkbox" data-c="preferences"> Préférences (functionality / personalization_storage)</label></div>' +
+      '<button class="cb-p" id="cb-all">Tout accepter</button>' +
+      '<button id="cb-none">Tout refuser</button>' +
+      '<button id="cb-cust">Personnaliser</button>' +
+      '<button class="cb-p" id="cb-save" style="display:none">Enregistrer mes choix</button>';
+    document.body.appendChild(box);
+
+    btn = document.createElement('button'); btn.id = 'cb-reopen'; btn.textContent = '🍪 Cookies';
+    document.body.appendChild(btn);
+
+    var opts = box.querySelector('#cb-opts'), save = box.querySelector('#cb-save'), cust = box.querySelector('#cb-cust');
+    box.querySelector('#cb-all').onclick = function () { apply({ analytics: true, marketing: true, preferences: true }, 'accept_all'); };
+    box.querySelector('#cb-none').onclick = function () { apply(DENIED, 'reject_all'); };
+    cust.onclick = function () { opts.style.display = 'block'; save.style.display = 'inline-block'; cust.style.display = 'none'; };
+    save.onclick = function () {
+      var s = {}; box.querySelectorAll('input[data-c]').forEach(function (i) { s[i.dataset.c] = i.checked; });
+      apply(s, 'custom');
+    };
+    btn.onclick = function () { show(); opts.style.display = 'block'; save.style.display = 'inline-block'; cust.style.display = 'none'; };
+
+    if (saved) btn.style.display = 'block'; else show();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+})();
+</script>
+
 <script>window.dataLayer = window.dataLayer || [];</script>
 <style>
 :root{--c:#111;--m:#666;--l:#eee;--a:#e4002b;--bg:#fafafa}
