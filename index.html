@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Shop</title>
+<!--
+  FAUX SITE E-COMMERCE POUR TESTS DE TRACKING — aucune transaction réelle.
+  Aucun snippet intégré. Place le snippet GTM (head) ici si besoin :
+-->
+<!-- [GTM HEAD SNIPPET ICI] -->
+<script>window.dataLayer = window.dataLayer || [];</script>
+<style>
+:root{--c:#111;--m:#666;--l:#eee;--a:#e4002b;--bg:#fafafa}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:var(--c);background:var(--bg)}
+a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
+header{background:#fff;border-bottom:1px solid var(--l);position:sticky;top:0;z-index:10}
+.bar{max-width:1200px;margin:auto;display:flex;align-items:center;gap:20px;padding:12px 20px;flex-wrap:wrap}
+.logo{font-weight:800;font-size:20px;letter-spacing:1px}.logo b{color:var(--a)}
+nav{display:flex;gap:16px;flex:1}nav a:hover{color:var(--a)}
+.search{display:flex}.search input{width:180px}
+.hdr-r{display:flex;gap:14px;align-items:center}
+main{max-width:1200px;margin:auto;padding:24px 20px 60px;min-height:70vh}
+footer{text-align:center;color:var(--m);padding:20px;border-top:1px solid var(--l);font-size:13px}
+h1{margin:0 0 16px}h2{margin:28px 0 12px}
+input,select{padding:9px 10px;border:1px solid #ccc;border-radius:6px;font:inherit;background:#fff}
+.btn{background:var(--c);color:#fff;border:0;border-radius:6px;padding:11px 20px;display:inline-block}
+.btn:hover{background:var(--a)}.btn.sec{background:#fff;color:var(--c);border:1px solid #ccc}.btn[disabled]{opacity:.4;pointer-events:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}
+.card{position:relative;background:#fff;border:1px solid var(--l);border-radius:10px;overflow:hidden}
+.card .img,.pimg{height:170px;display:flex;align-items:center;justify-content:center;font-size:64px}
+.card h3{margin:10px 12px 0;font-size:15px}.card .cat{margin:0 12px;color:var(--m);font-size:13px}.card .price{margin:4px 12px 12px;font-weight:700}
+.heart{position:absolute;top:8px;right:8px;background:#fff;border:1px solid var(--l);border-radius:50%;width:32px;height:32px;color:#bbb;z-index:2}
+.heart.on{color:var(--a)}
+.promos{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.promo{border-radius:12px;padding:40px 28px;color:#fff;display:block}.promo h2{margin:0 0 6px}
+.layout{display:grid;grid-template-columns:200px 1fr;gap:24px}
+.side label{display:block;margin:12px 0 4px;font-weight:600}
+.pdp{display:grid;grid-template-columns:1fr 1fr;gap:32px}.pimg{height:380px;border-radius:12px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 16px}
+.opt{border:1px solid #ccc;background:#fff;border-radius:6px;padding:7px 12px}.opt.sel{border-color:var(--c);background:var(--c);color:#fff}
+.box{background:#fff;border:1px solid var(--l);border-radius:10px;padding:18px}
+.two{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+.line{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--l)}
+.line .t{width:56px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.line .i{flex:1}.qty{display:flex;align-items:center;gap:8px}.qty button{width:28px;height:28px;border:1px solid #ccc;background:#fff;border-radius:4px}
+.sum div{display:flex;justify-content:space-between;padding:4px 0}.sum .tot{font-weight:800;font-size:18px;border-top:1px solid var(--l);margin-top:6px;padding-top:10px}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:12px}.f label{display:flex;flex-direction:column;font-size:13px;color:var(--m);gap:3px}.f .w{grid-column:1/-1}
+.steps{display:flex;gap:8px;margin-bottom:18px}.steps span{padding:6px 14px;border-radius:20px;background:var(--l);font-size:13px}.steps .on{background:var(--c);color:#fff}
+.choice{display:flex;gap:10px;align-items:center;border:1px solid #ccc;border-radius:8px;padding:12px;margin:8px 0;background:#fff}
+.err{background:#fde8ea;color:#a00018;padding:10px 14px;border-radius:6px;margin:10px 0}
+.hint{color:var(--m);font-size:12.5px}.hint a{text-decoration:underline;cursor:pointer}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--c);color:#fff;padding:12px 18px;border-radius:8px;display:none;z-index:50}
+#toast a{text-decoration:underline;margin-left:8px}
+@media(max-width:800px){.pdp,.two,.layout,.promos{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<!-- [GTM BODY NOSCRIPT ICI] -->
+<header><div class="bar" id="hdr"></div></header>
+<main id="app"></main>
+<footer>Demo Shop — site factice pour tests de tracking. Aucun paiement réel. Cartes test : 4242 4242 4242 4242 (OK) / 4000 0000 0000 0002 (refusée).</footer>
+<div id="toast"></div>
+
+<script>
+/* ============ Helpers & état ============ */
+const $ = s => document.querySelector(s);
+const LS = {get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}},del:k=>{try{localStorage.removeItem(k)}catch{}}};
+const CURRENCY='EUR', BRAND='Demo Brand', LANG='fr';
+const eur=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:CURRENCY}).format(n);
+const r2=n=>Math.round(n*100)/100;
+const clean=o=>JSON.parse(JSON.stringify(o));
+
+let cart=LS.get('cart',[]);        // [{id,size,color,qty}]
+let wish=LS.get('wish',[]);        // [id]
+let user=LS.get('user',null);      // {id}
+let coupon=LS.get('coupon',null);  // {code}
+let co=LS.get('co',{});            // checkout (pas de numéro de carte stocké)
+let listCtx=LS.get('listCtx',{});  // id -> [list_id,list_name,index]
+let filters={price:0,sort:'rel'};
+
+/* ============ dataLayer ============ */
+function dl(o){
+  if(o.ecommerce) dataLayer.push({ecommerce:null}); // reset avant chaque push ecommerce
+  dataLayer.push(clean(o));
+  console.log('%c[dataLayer]','color:#e4002b',o.event,o);
+}
+
+/* ============ Catalogue ============ */
+const SH=['40','41','42','43','44','45'], CL=['S','M','L','XL'], COL=['Noir','Bleu','Rouge'];
+const P={};[
+ ['p01','Trail Runner X1','Chaussures',129.9,'👟',SH],['p02','Road Pace 200','Chaussures',109,'👟',SH],
+ ['p03','Hike Boot Pro','Chaussures',159,'🥾',SH],['p04','Veste Coupe-Vent Air','Vêtements',89.9,'🧥',CL],
+ ['p05','Doudoune Légère','Vêtements',139,'🧥',CL],['p06','T-shirt Technique','Vêtements',34.9,'👕',CL],
+ ['p07','Short Trail','Vêtements',44.9,'🩳',CL],['p08','Sac à dos 20L','Accessoires',79.9,'🎒',null],
+ ['p09','Casquette Run','Accessoires',24.9,'🧢',null],['p10','Gourde Souple 500ml','Accessoires',14.9,'🧴',null],
+ ['p11','Chaussettes Pack x2','Accessoires',19.9,'🧦',null],['p12','Gants Polaires','Accessoires',29.9,'🧤',null]
+].forEach(([id,name,cat,price,emoji,sizes],i)=>P[id]={id,name,cat,price,emoji,sizes,hue:(i*37)%360});
+const CATS=['Chaussures','Vêtements','Accessoires'];
+const slug=c=>c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const bg=p=>`background:linear-gradient(135deg,hsl(${p.hue} 60% 88%),hsl(${p.hue} 60% 72%))`;
+const variant=l=>[l.color,l.size].filter(Boolean).join(' / ');
+
+function item(p,o={}){
+  const ctx=o.list||listCtx[p.id];
+  return {item_id:p.id,item_name:p.name,item_brand:BRAND,item_category:p.cat,item_variant:o.variant,
+    item_list_id:ctx?.[0],item_list_name:ctx?.[1],index:o.index??ctx?.[2],price:p.price,quantity:o.q||1};
+}
+const lineItems=()=>cart.map((l,i)=>item(P[l.id],{variant:variant(l),q:l.qty,index:i}));
+
+function totals(){
+  const sub=r2(cart.reduce((s,l)=>s+P[l.id].price*l.qty,0));
+  const disc=coupon?.code==='WELCOME10'?r2(sub*.1):0;
+  const base=r2(sub-disc);
+  let ship=0;
+  if(co.ship) ship=co.ship==='express'?9.9:(base>=100||coupon?.code==='FREESHIP'?0:4.9);
+  const total=r2(base+ship);
+  return {sub,disc,base,ship,total,tax:r2(total*20/120)};
+}
+const save=()=>{LS.set('cart',cart);LS.set('wish',wish);LS.set('coupon',coupon);LS.set('co',co);LS.set('listCtx',listCtx)};
+
+/* ============ UI commun ============ */
+function toast(html){const t=$('#toast');t.innerHTML=html;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',3000)}
+function header(){
+  const n=cart.reduce((s,l)=>s+l.qty,0);
+  $('#hdr').innerHTML=`<a class="logo" href="#/">DEMO<b>SHOP</b></a>
+  <nav><a href="#/all">Tout</a>${CATS.map(c=>`<a href="#/category/${slug(c)}">${c}</a>`).join('')}</nav>
+  <form class="search" data-form="search"><input name="q" placeholder="Rechercher…" required><button class="btn">OK</button></form>
+  <div class="hdr-r">
+    ${user?`<span>👤 ${user.id}</span><a href="#" data-act="logout">Déconnexion</a>`:`<a href="#/login">Connexion</a><a href="#/signup">Inscription</a>`}
+    <a href="#/wishlist">♥ (${wish.length})</a><a href="#/cart">🛒 Panier (${n})</a></div>`;
+}
+const render=(html)=>{$('#app').innerHTML=html;scrollTo(0,0)};
+const go=h=>{location.hash=h};
+
+function pageView(type,title){
+  document.title=title+' | Demo Shop';
+  dl({event:'page_view',page:{page_location:location.href,page_path:location.hash.slice(1)||'/',page_title:document.title,page_type:type,language:LANG},
+      user:{logged_in:!!user,user_id:user?.id}});
+}
+function viewList(list,products){
+  dl({event:'view_item_list',ecommerce:{item_list_id:list[0],item_list_name:list[1],
+    items:products.map((p,i)=>item(p,{list:[list[0],list[1],i],index:i}))}});
+}
+const card=(p,i,list)=>`<article class="card">
+  <button class="heart ${wish.includes(p.id)?'on':''}" data-act="wish" data-id="${p.id}" aria-label="Favori">♥</button>
+  <a href="#/product/${p.id}" data-act="select" data-id="${p.id}" data-i="${i}" data-list="${list[0]}|${list[1]}">
+    <div class="img" style="${bg(p)}">${p.emoji}</div><h3>${p.name}</h3><p class="cat">${p.cat}</p><p class="price">${eur(p.price)}</p></a></article>`;
+const grid=(ps,list)=>ps.length?`<div class="grid">${ps.map((p,i)=>card(p,i,list)).join('')}</div>`:`<p>Aucun produit.</p>`;
+
+function summary(){
+  const t=totals();
+  return `<aside class="box sum"><h3 style="margin-top:0">Récapitulatif</h3>
+    ${cart.map(l=>`<div><span>${l.qty}× ${P[l.id].name}<br><small class="hint">${variant(l)}</small></span><span>${eur(P[l.id].price*l.qty)}</span></div>`).join('')}
+    <div><span>Sous-total</span><span>${eur(t.sub)}</span></div>
+    ${t.disc?`<div><span>Code ${coupon.code}</span><span>-${eur(t.disc)}</span></div>`:''}
+    ${co.ship?`<div><span>Livraison</span><span>${t.ship?eur(t.ship):'Offerte'}</span></div>`:''}
+    <div class="tot"><span>Total TTC</span><span>${eur(co.ship?t.total:t.base)}</span></div></aside>`;
+}
+
+/* ============ Pages ============ */
+function home(){
+  const promos=[
+    {id:'promo_summer',name:'Soldes été',creative:'banner_trail',slot:'hero_1',link:'#/category/chaussures',bg:'linear-gradient(135deg,#e4002b,#ff7a45)',txt:'Jusqu\'à -30% sur les chaussures'},
+    {id:'promo_welcome',name:'Bienvenue',creative:'banner_welcome',slot:'hero_2',link:'#/category/vetements',bg:'linear-gradient(135deg,#1d3557,#457b9d)',txt:'Code WELCOME10 : -10% sur la commande'}];
+  const feat=Object.values(P).slice(0,8);
+  render(`<div class="promos">${promos.map((p,i)=>`<a class="promo" style="background:${p.bg}" href="${p.link}" data-act="promo" data-i="${i}"><h2>${p.name}</h2><p>${p.txt}</p></a>`).join('')}</div>
+    <h2>Notre sélection</h2>${grid(feat,['home_featured','Sélection accueil'])}`);
+  home.promos=promos;
+  pageView('home','Accueil');
+  promos.forEach(p=>dl({event:'view_promotion',ecommerce:{promotion_id:p.id,promotion_name:p.name,creative_name:p.creative,creative_slot:p.slot,location_id:'home_hero'}}));
+  viewList(['home_featured','Sélection accueil'],feat);
+}
+
+function listing(catSlug){
+  const cat=CATS.find(c=>slug(c)===catSlug);
+  const title=cat||'Tous les produits', list=[cat?'category_'+catSlug:'all_products',title];
+  listing.cur={cat,list,title};
+  let ps=Object.values(P).filter(p=>!cat||p.cat===cat);
+  render(`<h1>${title}</h1><div class="layout"><aside class="side box">
+    <label>Prix max</label><select data-change="price"><option value="0">Tous</option><option value="50">≤ 50 €</option><option value="100">≤ 100 €</option><option value="150">≤ 150 €</option></select>
+    <label>Trier par</label><select data-change="sort"><option value="rel">Pertinence</option><option value="asc">Prix croissant</option><option value="desc">Prix décroissant</option><option value="name">Nom</option></select></aside>
+    <div id="results"></div></div>`);
+  filters={price:0,sort:'rel'};
+  pageView(cat?'category':'listing',title);
+  drawResults(true);
+}
+function drawResults(first){
+  const {cat,list}=listing.cur;
+  let ps=Object.values(P).filter(p=>(!cat||p.cat===cat)&&(!filters.price||p.price<=filters.price));
+  if(filters.sort==='asc')ps.sort((a,b)=>a.price-b.price);
+  if(filters.sort==='desc')ps.sort((a,b)=>b.price-a.price);
+  if(filters.sort==='name')ps.sort((a,b)=>a.name.localeCompare(b.name));
+  $('#results').innerHTML=grid(ps,list);
+  if(ps.length)viewList(list,ps);
+  return ps;
+}
+
+function search(q){
+  const ps=Object.values(P).filter(p=>(p.name+' '+p.cat).toLowerCase().includes(q.toLowerCase()));
+  const list=['search_results','Résultats de recherche'];
+  render(`<h1>Résultats pour « ${q.replace(/</g,'&lt;')} »</h1><p class="hint">${ps.length} résultat(s)</p>${grid(ps,list)}`);
+  pageView('search','Recherche');
+  dl({event:'search',search_term:q,results_count:ps.length});
+  if(ps.length)viewList(list,ps);
+}
+
+function product(id){
+  const p=P[id]; if(!p)return go('#/');
+  const w=wish.includes(id);
+  const rel=Object.values(P).filter(x=>x.cat===p.cat&&x.id!==id).slice(0,4);
+  render(`<div class="pdp"><div class="pimg" style="${bg(p)}">${p.emoji}</div><div>
+    <h1>${p.name}</h1><p class="hint">${p.cat} · Réf. ${p.id}</p><p style="font-size:24px;font-weight:700">${eur(p.price)}</p>
+    <strong>Couleur</strong><div class="opts colors">${COL.map((c,i)=>`<button class="opt ${i?'':'sel'}" data-act="opt" data-v="${c}">${c}</button>`).join('')}</div>
+    ${p.sizes?`<strong>Taille</strong><div class="opts sizes">${p.sizes.map(s=>`<button class="opt" data-act="opt" data-v="${s}">${s}</button>`).join('')}</div>`:''}
+    <button class="btn" data-act="add" data-id="${id}">Ajouter au panier</button>
+    <button class="btn sec" data-act="wish" data-id="${id}" data-pdp="1">${w?'♥ Dans les favoris':'♡ Ajouter aux favoris'}</button></div></div>
+    <h2>Vous aimerez aussi</h2>${grid(rel,['related_products','Produits similaires'])}`);
+  pageView('product',p.name);
+  dl({event:'view_item',ecommerce:{currency:CURRENCY,value:p.price,items:[item(p)]}});
+  viewList(['related_products','Produits similaires'],rel);
+}
+
+function cartPage(){
+  const t=totals();
+  render(`<h1>Panier</h1>${cart.length?`<div class="two"><div class="box">${cart.map((l,i)=>{const p=P[l.id];const k=l.id+'|'+l.size+'|'+l.color;return `<div class="line">
+    <div class="t" style="${bg(p)}">${p.emoji}</div><div class="i"><a href="#/product/${p.id}"><strong>${p.name}</strong></a><br><small class="hint">${variant(l)}</small></div>
+    <div class="qty"><button data-act="qty" data-k="${k}" data-d="-1">−</button>${l.qty}<button data-act="qty" data-k="${k}" data-d="1">+</button></div>
+    <strong style="width:80px;text-align:right">${eur(p.price*l.qty)}</strong><a href="#" data-act="rm" data-k="${k}">✕</a></div>`}).join('')}
+    <form data-form="coupon" style="margin-top:16px;display:flex;gap:8px"><input name="code" placeholder="Code promo" value="${coupon?.code||''}"><button class="btn sec">Appliquer</button></form>
+    <p class="hint">Codes : WELCOME10 (-10 %) · FREESHIP (livraison standard offerte)</p></div>
+    <div>${summary()}<p><a class="btn" href="#/checkout/1" data-act="gocheckout">Passer commande</a></p></div></div>`
+    :`<p>Votre panier est vide. <a href="#/all" style="text-decoration:underline">Continuer vos achats</a></p>`}`);
+  pageView('cart','Panier');
+  if(cart.length)dl({event:'view_cart',ecommerce:{currency:CURRENCY,value:t.base,items:lineItems()}});
+}
+
+function authPage(mode){
+  const su=mode==='signup';
+  render(`<div class="box" style="max-width:420px;margin:auto"><h1>${su?'Inscription':'Connexion'}</h1>
+    <p class="hint">Formulaire factice : aucune donnée n'est envoyée ni stockée (seul un identifiant technique anonyme est créé).</p>
+    <form data-form="${mode}" class="f"><label class="w">E-mail<input name="email" type="email" required placeholder="test@example.com"></label>
+    <label class="w">Mot de passe<input name="pwd" type="password" required></label>
+    <div class="w"><button class="btn">${su?'Créer le compte':'Se connecter'}</button></div></form></div>`);
+  pageView('account',su?'Inscription':'Connexion');
+}
+function authDone(method,evt,email){
+  let h=0;for(const c of email)h=(h*31+c.charCodeAt(0))>>>0;
+  user={id:'u_'+h.toString(16)};LS.set('user',user);
+  dl({event:evt,method});
+  header();go('#/');
+}
+
+function wishlist(){
+  const ps=wish.map(id=>P[id]), list=['wishlist','Favoris'];
+  render(`<h1>Favoris</h1>${grid(ps,list)}`);
+  pageView('wishlist','Favoris');
+  if(ps.length)viewList(list,ps);
+}
+
+/* ---- Checkout ---- */
+function checkout(step){
+  if(!cart.length)return go('#/cart');
+  step=+step||1;
+  if(step>1&&!co.email)return go('#/checkout/1');
+  if(step>2&&!co.pay)return go('#/checkout/2');
+  const t=totals();
+  const steps=`<div class="steps">${['Livraison','Paiement','Confirmation'].map((s,i)=>`<span class="${i+1===step?'on':''}">${i+1}. ${s}</span>`).join('')}</div>`;
+  let body='';
+  if(step===1){
+    body=`<form data-form="ship" class="f box">
+      <label class="w">E-mail<input name="email" type="email" required value="${co.email||''}"></label>
+      <label>Prénom<input name="fn" required value="${co.fn||''}"></label><label>Nom<input name="ln" required value="${co.ln||''}"></label>
+      <label class="w">Adresse<input name="addr" required value="${co.addr||''}"></label>
+      <label>Code postal<input name="zip" required value="${co.zip||''}"></label><label>Ville<input name="city" required value="${co.city||''}"></label>
+      <div class="w"><strong>Mode de livraison</strong>
+      <label class="choice"><input type="radio" name="ship" value="standard" ${co.ship!=='express'?'checked':''}> Standard (3-5 j) — ${eur(t.base>=100||coupon?.code==='FREESHIP'?0:4.9)}</label>
+      <label class="choice"><input type="radio" name="ship" value="express" ${co.ship==='express'?'checked':''}> Express (24 h) — ${eur(9.9)}</label></div>
+      <div class="w"><button class="btn">Continuer vers le paiement</button></div></form>`;
+  }else if(step===2){
+    body=`<form data-form="pay" class="f box"><div class="w"><strong>Moyen de paiement</strong>
+      <label class="choice"><input type="radio" name="pt" value="credit_card" ${co.pay!=='paypal'?'checked':''}> Carte bancaire</label>
+      <label class="choice"><input type="radio" name="pt" value="paypal" ${co.pay==='paypal'?'checked':''}> PayPal (simulé)</label></div>
+      <label class="w">Numéro de carte<input name="num" placeholder="4242 4242 4242 4242" inputmode="numeric"></label>
+      <label>Expiration<input name="exp" placeholder="12/30"></label><label>CVC<input name="cvc" placeholder="123"></label>
+      <p class="hint w">Cartes test : <a data-act="fill" data-n="4242 4242 4242 4242">4242… (acceptée)</a> · <a data-act="fill" data-n="4000 0000 0000 0002">4000… (refusée)</a></p>
+      <div class="w"><a class="btn sec" href="#/checkout/1">Retour</a> <button class="btn">Vérifier la commande</button></div></form>`;
+  }else{
+    body=`<div class="box"><h3 style="margin-top:0">Vérification</h3>
+      <p>Livraison ${co.ship==='express'?'express':'standard'} — ${co.fn} ${co.ln}, ${co.addr}, ${co.zip} ${co.city}</p>
+      <p>Paiement : ${co.pay==='paypal'?'PayPal (simulé)':'Carte •••• '+(co.last4||'????')}</p>
+      <div id="payerr"></div>
+      <a class="btn sec" href="#/checkout/2">Retour</a> <button class="btn" id="paybtn" data-act="pay">Payer ${eur(t.total)}</button></div>`;
+  }
+  render(`<h1>Commande</h1>${steps}<div class="two"><div>${body}</div>${summary()}</div>`);
+  pageView('checkout','Commande - étape '+step);
+  if(step===1&&checkout.last!==1)dl({event:'begin_checkout',ecommerce:{currency:CURRENCY,value:t.base,coupon:coupon?.code,items:lineItems()}});
+  checkout.last=step;
+}
+
+function pay(){
+  const btn=$('#paybtn'); btn.disabled=true; btn.textContent='Traitement…';
+  setTimeout(()=>{
+    const t=totals();
+    if(co.declined){
+      dl({event:'payment_failed',payment_type:co.pay,error_code:'card_declined',value:t.total,currency:CURRENCY});
+      $('#payerr').innerHTML='<div class="err">Paiement refusé (carte test). Modifiez le moyen de paiement à l\'étape précédente.</div>';
+      btn.disabled=false;btn.textContent='Payer '+eur(t.total);
+      return;
+    }
+    const order={transaction_id:'T'+Date.now(),value:t.total,tax:t.tax,shipping:t.ship,currency:CURRENCY,coupon:coupon?.code,items:lineItems(),
+      name:co.fn+' '+co.ln,ship:co.ship,pay:co.pay};
+    LS.set('lastOrder',order);
+    cart=[];coupon=null;co={};checkout.last=0;save();LS.del('coupon');
+    go('#/confirmation');
+  },900);
+}
+
+function confirmation(){
+  const o=LS.get('lastOrder');
+  if(!o)return go('#/');
+  header();
+  render(`<div class="box" style="max-width:560px;margin:auto;text-align:center"><h1>Merci pour votre commande ! 🎉</h1>
+    <p>Commande n° <strong>${o.transaction_id}</strong></p><p>Total payé : <strong>${eur(o.value)}</strong> (dont TVA ${eur(o.tax)})</p>
+    <p class="hint">Recharger cette page renvoie l'événement <code>purchase</code> (test de dédoublonnage).</p>
+    <a class="btn" href="#/">Retour à l'accueil</a></div>`);
+  pageView('confirmation','Confirmation');
+  dl({event:'purchase',ecommerce:{transaction_id:o.transaction_id,value:o.value,tax:o.tax,shipping:o.shipping,currency:o.currency,coupon:o.coupon,items:o.items}});
+}
+
+/* ============ Routeur ============ */
+function route(){
+  const [path,qs]=(location.hash.slice(1)||'/').split('?');
+  const q=new URLSearchParams(qs||''); const s=path.split('/').filter(Boolean);
+  header();
+  switch(s[0]){
+    case undefined:return home();
+    case 'all':return listing();
+    case 'category':return listing(s[1]);
+    case 'search':return search(q.get('q')||'');
+    case 'product':return product(s[1]);
+    case 'cart':return cartPage();
+    case 'checkout':return checkout(s[1]);
+    case 'confirmation':return confirmation();
+    case 'login':return authPage('login');
+    case 'signup':return authPage('signup');
+    case 'wishlist':return wishlist();
+    default:return go('#/');
+  }
+}
+addEventListener('hashchange',route);
+
+/* ============ Événements UI ============ */
+function addLine(p,size,color,n){
+  const k=p.id+'|'+size+'|'+color;
+  const l=cart.find(x=>x.id+'|'+x.size+'|'+x.color===k);
+  if(l)l.qty+=n;else cart.push({id:p.id,size,color,qty:n});
+  save();header();
+  dl({event:'add_to_cart',ecommerce:{currency:CURRENCY,value:r2(p.price*n),items:[item(p,{variant:variant({size,color}),q:n})]}});
+}
+function changeQty(k,d){
+  const l=cart.find(x=>x.id+'|'+x.size+'|'+x.color===k); if(!l)return;
+  const n=Math.min(Math.abs(d),l.qty), p=P[l.id];
+  const ev=d>0?'add_to_cart':'remove_from_cart';
+  dl({event:ev,ecommerce:{currency:CURRENCY,value:r2(p.price*n),items:[item(p,{variant:variant(l),q:n})]}});
+  l.qty+=d; if(l.qty<=0)cart=cart.filter(x=>x!==l);
+  save();cartPage();header();
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]'); if(!t)return;
+  const a=t.dataset.act, p=P[t.dataset.id];
+  switch(a){
+    case 'select':{
+      const [lid,lname]=t.dataset.list.split('|');
+      listCtx[p.id]=[lid,lname,+t.dataset.i];LS.set('listCtx',listCtx);
+      dl({event:'select_item',ecommerce:{item_list_id:lid,item_list_name:lname,items:[item(p,{list:[lid,lname,+t.dataset.i]})]}});
+      break;}
+    case 'promo':{
+      const pr=home.promos[+t.dataset.i];
+      dl({event:'select_promotion',ecommerce:{promotion_id:pr.id,promotion_name:pr.name,creative_name:pr.creative,creative_slot:pr.slot,location_id:'home_hero'}});
+      break;}
+    case 'wish':{
+      e.preventDefault();
+      const i=wish.indexOf(p.id);
+      if(i<0){wish.push(p.id);dl({event:'add_to_wishlist',ecommerce:{currency:CURRENCY,value:p.price,items:[item(p)]}});}
+      else{wish.splice(i,1);dl({event:'remove_from_wishlist',ecommerce:{currency:CURRENCY,value:p.price,items:[item(p)]}});}
+      save();header();
+      if(t.dataset.pdp)t.textContent=wish.includes(p.id)?'♥ Dans les favoris':'♡ Ajouter aux favoris';
+      else{t.classList.toggle('on',wish.includes(p.id));if(location.hash==='#/wishlist')wishlist();}
+      break;}
+    case 'opt':
+      t.parentElement.querySelectorAll('.opt').forEach(b=>b.classList.remove('sel'));t.classList.add('sel');break;
+    case 'add':{
+      const size=$('.sizes .sel')?.dataset.v, color=$('.colors .sel').dataset.v;
+      if(p.sizes&&!size)return toast('Choisissez une taille');
+      addLine(p,size,color,1);
+      toast('Ajouté au panier <a href="#/cart">Voir le panier</a>');
+      break;}
+    case 'qty':changeQty(t.dataset.k,+t.dataset.d);break;
+    case 'rm':{e.preventDefault();const l=cart.find(x=>x.id+'|'+x.size+'|'+x.color===t.dataset.k);if(l)changeQty(t.dataset.k,-l.qty);break;}
+    case 'fill':{e.preventDefault();document.querySelector('[name=num]').value=t.dataset.n;break;}
+    case 'pay':pay();break;
+    case 'logout':e.preventDefault();user=null;LS.del('user');dl({event:'logout'});header();route();break;
+  }
+});
+
+document.addEventListener('change',e=>{
+  const k=e.target.dataset.change; if(!k)return;
+  if(k==='price'){filters.price=+e.target.value;const ps=drawResults();dl({event:'filter_products',filter_type:'price_max',filter_value:filters.price||'all',results_count:ps.length});}
+  if(k==='sort'){filters.sort=e.target.value;drawResults();dl({event:'sort_products',sort_value:filters.sort});}
+});
+
+document.addEventListener('submit',e=>{
+  const f=e.target.dataset.form; if(!f)return;
+  e.preventDefault();
+  const d=Object.fromEntries(new FormData(e.target));
+  switch(f){
+    case 'search':go('#/search?q='+encodeURIComponent(d.q.trim()));e.target.reset();break;
+    case 'coupon':{
+      const code=(d.code||'').trim().toUpperCase(), ok=['WELCOME10','FREESHIP'].includes(code);
+      coupon=ok?{code}:null;save();
+      dl({event:'apply_coupon',coupon:code,success:ok});
+      if(!ok)toast('Code invalide');
+      cartPage();break;}
+    case 'login':authDone('email','login',d.email);break;
+    case 'signup':authDone('email','sign_up',d.email);break;
+    case 'ship':{
+      Object.assign(co,{email:d.email,fn:d.fn,ln:d.ln,addr:d.addr,zip:d.zip,city:d.city,ship:d.ship});save();
+      const t=totals();
+      dl({event:'add_shipping_info',ecommerce:{currency:CURRENCY,value:t.base,coupon:coupon?.code,shipping_tier:d.ship,items:lineItems()}});
+      go('#/checkout/2');break;}
+    case 'pay':{
+      const num=(d.num||'').replace(/\s/g,'');
+      co.pay=d.pt;co.last4=d.pt==='credit_card'?num.slice(-4):'';co.declined=d.pt==='credit_card'&&num==='4000000000000002';save();
+      const t=totals();
+      dl({event:'add_payment_info',ecommerce:{currency:CURRENCY,value:t.base,coupon:coupon?.code,payment_type:d.pt,items:lineItems()}});
+      go('#/checkout/3');break;}
+  }
+});
+
+route();
+</script>
+</body>
+</html>
