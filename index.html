@@ -42,7 +42,6 @@
   // ---- 1) Défaut (denied) puis statut mémorisé, au chargement ----
   var saved = load();
   var d = toGtag(DENIED); d.wait_for_update = 500;
-  gtag('config', 'G-XXXXXX', {server_container_url: 'https://localhost:8888'});
   gtag('consent', 'default', d);
   if (saved) gtag('consent', 'update', toGtag(saved));
   send(saved || DENIED, 'page_load', saved ? 'stored' : 'default', !saved);
