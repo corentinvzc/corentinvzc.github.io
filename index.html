@@ -185,6 +185,7 @@ let coupon=LS.get('coupon',null);  // {code}
 let co=LS.get('co',{});            // checkout (pas de numéro de carte stocké)
 let listCtx=LS.get('listCtx',{});  // id -> [list_id,list_name,index]
 let filters={price:0,sort:'rel'};
+let udata=LS.get('udata',{});      // user_data hashé (SHA-256)
 
 /* ============ dataLayer ============ */
 function dl(o){
@@ -194,6 +195,28 @@ function dl(o){
 }
 
 /* ============ Catalogue ============ */
+async function sha(s){
+  s=(s||'').toString().trim().toLowerCase();
+  if(!s)return undefined;
+  if(!(window.crypto&&crypto.subtle)){console.warn('[user_data] crypto.subtle indisponible (contexte non sécurisé : utiliser https ou localhost) — hash ignoré');return undefined;}
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+const e164=p=>{p=(p||'').replace(/[^\d+]/g,'');return /^0\d{9}$/.test(p)?'+33'+p.slice(1):p};
+async function setUserData(f){
+  const u={...udata}, a={...(u.address||{})};
+  if(f.email) u.sha256_email_address=await sha(f.email);
+  if(f.phone) u.sha256_phone_number=await sha(e164(f.phone));
+  if(f.fn) a.sha256_first_name=await sha(f.fn);
+  if(f.ln) a.sha256_last_name=await sha(f.ln);
+  if(f.addr) a.sha256_street=await sha(f.addr);
+  if(f.city) a.city=f.city.trim().toLowerCase();
+  if(f.zip) a.postal_code=f.zip.trim().toLowerCase();
+  if(f.country) a.country=f.country.trim().toLowerCase();
+  if(Object.keys(a).length) u.address=a;
+  udata=u; LS.set('udata',u);
+  dl({event:'user_data_update',user_data:u});
+}
 const SH=['40','41','42','43','44','45'], CL=['S','M','L','XL'], COL=['Noir','Bleu','Rouge'];
 const P={};[
  ['p01','Trail Runner X1','Chaussures',129.9,'👟',SH],['p02','Road Pace 200','Chaussures',109,'👟',SH],
@@ -243,7 +266,8 @@ const go=h=>{location.hash=h};
 function pageView(type,title){
   document.title=title+' | Demo Shop';
   dl({event:'page_view',page:{page_location:location.href,page_path:location.hash.slice(1)||'/',page_title:document.title,page_type:type,language:LANG},
-      user:{logged_in:!!user,user_id:user?.id}});
+            user:{logged_in:!!user,user_id:user?.id},
+      user_data:Object.keys(udata).length?udata:undefined});
 }
 function viewList(list,products){
   dl({event:'view_item_list',ecommerce:{item_list_id:list[0],item_list_name:list[1],
@@ -351,9 +375,10 @@ function authPage(mode){
     <div class="w"><button class="btn">${su?'Créer le compte':'Se connecter'}</button></div></form></div>`);
   pageView('account',su?'Inscription':'Connexion');
 }
-function authDone(method,evt,email){
+async function authDone(method,evt,email){
   let h=0;for(const c of email)h=(h*31+c.charCodeAt(0))>>>0;
   user={id:'u_'+h.toString(16)};LS.set('user',user);
+  await setUserData({email});
   dl({event:evt,method});
   header();go('#/');
 }
@@ -380,6 +405,9 @@ function checkout(step){
       <label>Prénom<input name="fn" required value="${co.fn||''}"></label><label>Nom<input name="ln" required value="${co.ln||''}"></label>
       <label class="w">Adresse<input name="addr" required value="${co.addr||''}"></label>
       <label>Code postal<input name="zip" required value="${co.zip||''}"></label><label>Ville<input name="city" required value="${co.city||''}"></label>
+      <label>Téléphone<input name="phone" type="tel" placeholder="0612345678"></label>
+      <label>Pays<select name="country"><option value="FR">France</option><option value="BE">Belgique</option><option value="CH">Suisse</option></select></label>
+      <p class="hint w">Données de test : <a data-act="fillship">préremplir le formulaire</a></p>
       <div class="w"><strong>Mode de livraison</strong>
       <label class="choice"><input type="radio" name="ship" value="standard" ${co.ship!=='express'?'checked':''}> Standard (3-5 j) — ${eur(t.base>=100||coupon?.code==='FREESHIP'?0:4.9)}</label>
       <label class="choice"><input type="radio" name="ship" value="express" ${co.ship==='express'?'checked':''}> Express (24 h) — ${eur(9.9)}</label></div>
@@ -432,7 +460,8 @@ function confirmation(){
     <p class="hint">Recharger cette page renvoie l'événement <code>purchase</code> (test de dédoublonnage).</p>
     <a class="btn" href="#/">Retour à l'accueil</a></div>`);
   pageView('confirmation','Confirmation');
-  dl({event:'purchase',ecommerce:{transaction_id:o.transaction_id,value:o.value,tax:o.tax,shipping:o.shipping,currency:o.currency,coupon:o.coupon,items:o.items}});
+    dl({event:'purchase',user_data:Object.keys(udata).length?udata:undefined,
+    ecommerce:{transaction_id:o.transaction_id,value:o.value,tax:o.tax,shipping:o.shipping,currency:o.currency,coupon:o.coupon,items:o.items}});
 }
 
 /* ============ Routeur ============ */
@@ -507,8 +536,14 @@ document.addEventListener('click',e=>{
     case 'qty':changeQty(t.dataset.k,+t.dataset.d);break;
     case 'rm':{e.preventDefault();const l=cart.find(x=>x.id+'|'+x.size+'|'+x.color===t.dataset.k);if(l)changeQty(t.dataset.k,-l.qty);break;}
     case 'fill':{e.preventDefault();document.querySelector('[name=num]').value=t.dataset.n;break;}
+    case 'fillship':{
+      e.preventDefault();
+      const f=document.querySelector('[data-form=ship]');
+      const T={email:'test.user@example.com',fn:'Jean',ln:'Test',addr:'1 rue de Test',zip:'75001',city:'Paris',phone:'0612345678',country:'FR'};
+      Object.entries(T).forEach(([k,v])=>{if(f[k])f[k].value=v});
+      break;}
     case 'pay':pay();break;
-    case 'logout':e.preventDefault();user=null;LS.del('user');dl({event:'logout'});header();route();break;
+    case 'logout':e.preventDefault();user=null;udata={};LS.del('user');LS.del('udata');dl({event:'logout',user_data:null});header();route();break;
   }
 });
 
@@ -518,7 +553,7 @@ document.addEventListener('change',e=>{
   if(k==='sort'){filters.sort=e.target.value;drawResults();dl({event:'sort_products',sort_value:filters.sort});}
 });
 
-document.addEventListener('submit',e=>{
+document.addEventListener('submit',async e=>{
   const f=e.target.dataset.form; if(!f)return;
   e.preventDefault();
   const d=Object.fromEntries(new FormData(e.target));
@@ -530,9 +565,10 @@ document.addEventListener('submit',e=>{
       dl({event:'apply_coupon',coupon:code,success:ok});
       if(!ok)toast('Code invalide');
       cartPage();break;}
-    case 'login':authDone('email','login',d.email);break;
-    case 'signup':authDone('email','sign_up',d.email);break;
+    case 'login':await authDone('email','login',d.email);break;
+    case 'signup':await authDone('email','sign_up',d.email);break;
     case 'ship':{
+      await setUserData({email:d.email,phone:d.phone,fn:d.fn,ln:d.ln,addr:d.addr,city:d.city,zip:d.zip,country:d.country});
       Object.assign(co,{email:d.email,fn:d.fn,ln:d.ln,addr:d.addr,zip:d.zip,city:d.city,ship:d.ship});save();
       const t=totals();
       dl({event:'add_shipping_info',ecommerce:{currency:CURRENCY,value:t.base,coupon:coupon?.code,shipping_tier:d.ship,items:lineItems()}});
